@@ -1,3 +1,4 @@
+#Uses tkinter library for everything that is graphically based
 import tkinter as tk
 
 # Creates the main window
@@ -38,7 +39,7 @@ datatype_grid.grid_columnconfigure(0, weight=2)
 
 #Creates the datatype columns
 for i, item in enumerate(datatype):
-    datatypeDisplay = tk.Label(datatype_grid, text=item, font=("Arial", 16), height = 5 )
+    datatypeDisplay = tk.Label(datatype_grid, text=item, font=("Arial", 16), height = 4 )
     datatypeDisplay.grid(row=0, column=i, padx=1, pady=0, sticky = "nsew")  # Use grid to place in rows and increment column
 
 
