@@ -11,6 +11,24 @@ def create_database():
     conn.commit()
     conn.close()
 
+#Delete the selected item in the tree
+def delete_selected_item(tree):
+    """Delete the selected record from the database."""
+    selected_item = tree.selection()  # Get the selected item
+    if selected_item:
+        item_values = tree.item(selected_item, "values")  # Get the values of the selected item
+        item_id = item_values[4]  # Assuming 'ID' is in the fifth column
+
+        conn = sqlite3.connect("inventory.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM inventory WHERE id = ?", (item_id,))
+        conn.commit()
+        conn.close()
+
+        # Remove the item from the Treeview
+        tree.delete(selected_item)
+        print(f"Record with ID {item_id} deleted successfully!")
+
 #Fetches all of the data from within the database
 def fetch_data_from_database():
     conn = sqlite3.connect("inventory.db")
@@ -78,6 +96,50 @@ def clear_fields(entries):
         entry.delete(0, ctk.END)
     print("Fields cleared!")
 
+# Global variable to store the selected record ID
+selected_record_id = None
+
+# Edit the selected record
+def edit_selected_record(tree, entries):
+    global selected_record_id  # Declare global variable to store ID
+    selected_item = tree.selection()  # Get the selected item
+    if selected_item:
+        item_values = tree.item(selected_item, "values")  # Get the values of the selected item
+        # Fill the input fields with the selected item's data
+        entries[0].delete(0, ctk.END)
+        entries[0].insert(0, item_values[0])  # Name
+        entries[1].delete(0, ctk.END)
+        entries[1].insert(0, item_values[3])  # Type
+        entries[2].delete(0, ctk.END)
+        entries[2].insert(0, item_values[2])  # Quantity
+        selected_record_id = item_values[4]  # Store the ID of the selected item
+        print(f"Editing record with ID {selected_record_id}...")
+
+# Confirm the edited record
+def confirm_edited_record(tree, entries):
+    global selected_record_id  # Access the stored ID
+    name = entries[0].get()  # Get Name input
+    item_type = entries[1].get()  # Get Type input
+    quantity = entries[2].get()  # Get Quantity input
+
+    if selected_record_id and name and item_type and quantity.isdigit():  # Validate inputs
+        conn = sqlite3.connect("inventory.db")
+        cursor = conn.cursor()
+        cursor.execute("UPDATE inventory SET name = ?, type = ?, quantity = ? WHERE id = ?",
+                       (name, item_type, int(quantity), selected_record_id))
+        conn.commit()
+        conn.close()
+
+        # Clear the input fields after editing
+        clear_fields(entries)
+
+        # Refresh the Treeview to show the updated record
+        refresh_treeview(tree)
+        print(f"Record with ID {selected_record_id} updated successfully!")
+        selected_record_id = None  # Reset the global variable
+    else:
+        print("Invalid input or no record selected. Please check the fields.")
+
 #Builts the visual interface
 def create_gui():
     ctk.set_appearance_mode("System")
@@ -137,6 +199,9 @@ def create_gui():
     input_section = ctk.CTkFrame(right_frame, corner_radius=0)
     input_section.pack(fill="x", pady=5)
 
+    input_label = ctk.CTkLabel(input_section, text="Add New Record")
+    input_label.pack()
+
     labels = ["Name", "Type", "Quantity"]
     entries = []
     for label_text in labels:
@@ -150,8 +215,28 @@ def create_gui():
     input_button_frame.pack(fill="x", pady=5)
     input_add = ctk.CTkButton(input_button_frame, text="Add")
     input_add.pack(side="left", padx=5)
+    input_add.configure(command=lambda: add_item_to_database(tree, entries))
+
     input_cancel = ctk.CTkButton(input_button_frame, text="Cancel")
     input_cancel.pack(side="left")
+    input_cancel.configure(command=lambda: clear_fields(entries)) 
+
+
+
+    # Add "Edit" and "Confirm" buttons (new line)
+    input_edit_frame = ctk.CTkFrame(input_section, corner_radius=0)  # New Frame for positioning
+    input_edit_frame.pack(fill="x", pady=(5, 0))  # Slight padding to separate from above buttons
+
+    input_edit = ctk.CTkButton(input_edit_frame, text="Edit")
+    input_edit.pack(side="left", padx=5)  # Positioned to the left
+    input_edit.configure(command=lambda: edit_selected_record(tree, entries))
+
+    input_confirm = ctk.CTkButton(input_edit_frame, text="Confirm")
+    input_confirm.pack(side="left")  # Positioned next to the "Edit" button#
+    input_confirm.configure(command=lambda: confirm_edited_record(tree, entries))
+
+    
+
 
     # --- Search Section ---
     search_section = ctk.CTkFrame(right_frame, corner_radius=0)
@@ -175,17 +260,16 @@ def create_gui():
 
     delete_button = ctk.CTkButton(delete_refresh_section, text="Delete")
     delete_button.pack(side="left", padx=5)
+    delete_button.configure(command=lambda: delete_selected_item(tree))
+
     refresh_button = ctk.CTkButton(delete_refresh_section, text="Refresh")
     refresh_button.pack(side="left")
 
-    """input_cancel.configure(text="Add", 
-                       command=lambda: add_item_to_database(tree, entries))  # Reusing Cancel button for Add functionality
+        # --- Exit Button ---
+    exit_button = ctk.CTkButton(right_frame, text="Exit", command=root.destroy)
+    exit_button.pack(side="bottom", pady=10)  # Positioned at the bottom of the right frame
 
-    refresh_button.configure(command=lambda: refresh_treeview(tree)) """ # Reusing Refresh button for refresh functionality
-
-    input_add.configure(command=lambda: add_item_to_database(tree, entries))
-
-    input_cancel.configure(command=lambda: clear_fields(entries)) 
+    
     
     root.mainloop()
 #add_fake_data()
