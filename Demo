@@ -38,22 +38,16 @@ def fetch_data_from_database():
     conn.close()
     return records
 
-#Adds dummy data to use within the database
-def add_fake_data():
-    conn = sqlite3.connect("inventory.db")
-    cursor = conn.cursor()
+#Refreshes the database after the values have changed
+def refresh_treeview(tree):
+    """Refresh the Treeview with updated data from the database."""
+    for row in tree.get_children():
+        tree.delete(row)  # Clear existing data in Treeview
+    data = fetch_data_from_database()
+    for record in data:
+        tree.insert("", ctk.END, values=record)
 
-    fake_data = [
-        ("Apples", "2025-03-01", 50, "Fruit"),
-        ("Bananas", "2025-03-15", 100, "Fruit"),
-        ("Carrots", "2025-03-10", 70, "Vegetable"),
-        ("Chicken", "2025-03-20", 25, "Meat"),
-        ("Milk", "2025-03-05", 30, "Dairy")
-    ]
 
-    cursor.executemany('''INSERT INTO inventory (name, date, quantity, type) VALUES (?, ?, ?, ?)''', fake_data)
-    conn.commit()
-    conn.close()
 
 #Takes the inputted values and adds them to the database
 def add_item_to_database(tree, entries):
@@ -62,7 +56,7 @@ def add_item_to_database(tree, entries):
     item_type = entries[1].get()  # Get Type input
     quantity = entries[2].get()  # Get Quantity input
 
-    if name and item_type and quantity.isdigit():  # Validate inputs
+    if name and item_type and quantity.isdigit() and len(quantity) <= 8:  # Validate inputs
         conn = sqlite3.connect("inventory.db")
         cursor = conn.cursor()
         cursor.execute("INSERT INTO inventory (name, date, quantity, type) VALUES (?, ?, ?, ?)",
@@ -79,15 +73,6 @@ def add_item_to_database(tree, entries):
         print(f"Added {name} to the database!")
     else:
         print("Invalid input. Please check the fields.")
-
-#Refreshes the database after the values have changed
-def refresh_treeview(tree):
-    """Refresh the Treeview with updated data from the database."""
-    for row in tree.get_children():
-        tree.delete(row)  # Clear existing data in Treeview
-    data = fetch_data_from_database()
-    for record in data:
-        tree.insert("", ctk.END, values=record)
     
 #Empties the inputs within the 'add new item' area
 def clear_fields(entries):
@@ -121,24 +106,22 @@ def confirm_edited_record(tree, entries):
     name = entries[0].get()  # Get Name input
     item_type = entries[1].get()  # Get Type input
     quantity = entries[2].get()  # Get Quantity input
-
-    if selected_record_id and name and item_type and quantity.isdigit():  # Validate inputs
+    if selected_record_id and name and item_type and quantity.isdigit() and len(quantity) <= 8:  # Validate inputs
         conn = sqlite3.connect("inventory.db")
         cursor = conn.cursor()
-        cursor.execute("UPDATE inventory SET name = ?, type = ?, quantity = ? WHERE id = ?",
+        cursor.execute("UPDATE inventory SET name = ?, type = ?, quantity = ? WHERE id = ?", 
                        (name, item_type, int(quantity), selected_record_id))
         conn.commit()
         conn.close()
-
         # Clear the input fields after editing
         clear_fields(entries)
-
         # Refresh the Treeview to show the updated record
         refresh_treeview(tree)
         print(f"Record with ID {selected_record_id} updated successfully!")
-        selected_record_id = None  # Reset the global variable
+        selected_record_id = None  # Reset the global variable to allow adding new records
     else:
-        print("Invalid input or no record selected. Please check the fields.")
+        print("Invalid input or no record selected. Ensure quantity is up to 8 digits.")
+
 
 #Builts the visual interface
 def create_gui():
@@ -183,13 +166,6 @@ def create_gui():
     data = fetch_data_from_database()
     for record in data:
         tree.insert("", ctk.END, values=record)
-    """
-    tree.insert("", ctk.END, values=("Laptop", today.strftime("%Y-%m-%d"), "50", "Electronics", "1001"))
-    tree.insert("", ctk.END, values=("T-Shirt", today.strftime("%Y-%m-%d"), "200", "Clothing", "1002"))
-    tree.insert("", ctk.END, values=("Bananas", today.strftime("%Y-%m-%d"), "1000000", "Food", "1003"))
-    tree.insert("", ctk.END, values=("Desk Chair", today.strftime("%Y-%m-%d"), "25", "Furniture", "1004"))
-    tree.insert("", ctk.END, values=("Notebook", today.strftime("%Y-%m-%d"), "500", "Stationery", "1005"))
-    """
 
     # --- Right Frame (Search and Input) ---
     right_frame = ctk.CTkFrame(root, corner_radius=0)
@@ -199,8 +175,8 @@ def create_gui():
     input_section = ctk.CTkFrame(right_frame, corner_radius=0)
     input_section.pack(fill="x", pady=5)
 
-    input_label = ctk.CTkLabel(input_section, text="Add New Record")
-    input_label.pack()
+    #input_label = ctk.CTkLabel(input_section, text="Add New Record")
+    #input_label.pack()
 
     labels = ["Name", "Type", "Quantity"]
     entries = []
